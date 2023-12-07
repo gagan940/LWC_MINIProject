@@ -1,0 +1,43 @@
+<template>
+
+    <lightning-card>
+
+    <div >
+        <strong ><p style="color:Red  ; padding: 4px ;">Please select the date to provide employee details.</p>
+            </strong>
+            <lightning-input  style="width:160px; padding: 4px;"
+         type="date" label=" " max={today} onchange={datchange}></lightning-input>
+
+    </div>
+</lightning-card>
+<template if:true={selectedtoday}>
+    <template if:false={showupdatedTable}>
+
+    <lightning-card>
+        <lightning-datatable
+                key-field="Label"
+                data={records}
+                columns={columns}
+                onsave={handleSave}
+          draft-values={draftValues}
+          hide-checkbox-column="true">
+        </lightning-datatable>
+    </lightning-card>
+</template>
+</template>
+
+<template if:true={showupdatedTable}>
+
+    <lightning-card>
+        <lightning-datatable
+                key-field="Employee_Name__c"
+                data={updatedrecords}
+                columns={updatedColumns}
+                onsave={handleSave}
+          draft-values={draftValues}
+          hide-checkbox-column="true">
+        </lightning-datatable>
+    </lightning-card>
+</template>
+</template>
+
