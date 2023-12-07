@@ -1,0 +1,118 @@
+public class getEmpName {
+    
+    
+    @AuraEnabled(cacheable=true)
+    // To get the details of emp name from custom metadata    
+    public static List<EmpName__mdt> getDetails(){
+        
+        return [ SELECT Name__c, label FROM EmpName__mdt ];
+        
+    }
+    
+    @AuraEnabled
+    //method to get the saved record of Existing data .
+    public static List<Employee_Attendance__c> getSavedDetails(Date selectedDt){
+        
+        return [ Select Id,Employee_Name__c,Employee_Status__c from Employee_Attendance__c where Date__r.Date__c=:selectedDt ];
+        
+    }
+    
+    @AuraEnabled
+    
+    // To save the draft values from datatables.
+    public static void updateDetails(List<object> empMap, Date selecteddate){
+        Map<object, object> resultMap;
+        String stDate=selecteddate.format();
+        system.debug('stDate11'+stDate);
+        Id updateDateId ;
+        Id newDateId;
+        
+        // Getting existing Date record if exists.
+        List<Date__c> existRec = [Select id ,Date__c from Date__c where Date__c=:selecteddate];
+        
+        if(existRec.size()>0){
+            updateDateId=existRec[0].id;
+        }
+        else{
+            
+            Date__c dt = new  Date__c(Date__c=selecteddate, Name=stDate);
+            Insert dt; 
+            newDateId= dt.Id;
+        }
+        
+        List<Employee_Attendance__c>empList= new List<Employee_Attendance__c>();
+        List<Employee_Attendance__c>empUpdateList= new List<Employee_Attendance__c>();
+        
+        Map<String,Employee_Attendance__c>extempMap= new Map<String,Employee_Attendance__c>();
+        if (updateDateId!=null){
+            List<Employee_Attendance__c>extempList =[Select Id, Employee_Name__c from Employee_Attendance__c where Date__c=:updateDateId];
+            for(Employee_Attendance__c ept:extempList){
+                
+                extempMap.put(ept.Employee_Name__c,ept);
+            }  
+        }
+        
+        if (newDateId!=null){
+            for (object ob :empMap){
+                resultMap = (Map<object, object>)ob;
+                String Name= (String)resultMap.get('Label');
+                Boolean empStatus= (Boolean)resultMap.get('Name__c');
+                system.debug('resultMap'+resultMap);
+                system.debug('selecteddate'+selecteddate);
+                //if(!extempMap.containsKey(Name)){
+                Employee_Attendance__c emp = new Employee_Attendance__c(Employee_Name__c=Name,Employee_Status__c=empStatus,
+                                                                        
+                                                                        Name=Name );
+                
+                if (newDateId!=null){
+                    emp.Date__c=newDateId;
+                }
+                empList.add(emp);
+                system.debug('emp123'+emp);
+            }
+                    }
+        // to handle the updation of emendment on old data .
+        else if (updateDateId!=null){
+            for (object ob :empMap){
+                resultMap = (Map<object, object>)ob;
+                system.debug('resultMap123'+resultMap);
+                String Name= (String)resultMap.get('Employee_Name__c');
+                Boolean empStatus= (Boolean)resultMap.get('Employee_Status__c');
+                Employee_Attendance__c empRec= extempMap.get(Name);    
+                empRec.Employee_Status__c=empStatus;
+                empUpdateList.add(empRec);
+                
+                
+            }
+        }
+        //Add the all unedited emp details from metadata to Salesforce (When user make the changes in the existing data of salesforce).
+        If (newDateId!=null){
+            List<EmpName__mdt>empMdt=[SELECT Name__c, label FROM EmpName__mdt];
+            Map<String ,Employee_Attendance__c> mapemp=new Map<String ,Employee_Attendance__c>(); 
+            if(empMdt.size()>0){
+                
+                for (Employee_Attendance__c empAtt:empList){
+                    mapemp.put(empAtt.Employee_Name__c,empAtt );
+                    
+                }
+                
+                for (EmpName__mdt emp:empMdt){
+                    if (!mapemp.containsKey(emp.Label)){
+                        Employee_Attendance__c emp2 = new Employee_Attendance__c(Employee_Name__c=emp.label,Employee_Status__c=false,
+                                                                                 
+                                                                                 Name=emp.label );
+                        emp2.Date__c=newDateId;
+                        empList.add(emp2);
+                        
+                    }
+                }
+            }
+        }
+        if(empList.size()>0){
+        Database.insert (empList);
+        }
+        if(empUpdateList.size()>0){
+            Database.update (empUpdateList);
+        }
+    }
+}
