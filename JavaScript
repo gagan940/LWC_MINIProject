@@ -1,0 +1,169 @@
+import { LightningElement,wire,track } from 'lwc';
+import getDetails from '@salesforce/apex/getEmpName.getDetails';
+import updateDetails from '@salesforce/apex/getEmpName.updateDetails';
+import getSavedDetails from '@salesforce/apex/getEmpName.getSavedDetails';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { refreshApex } from '@salesforce/apex';
+
+
+const COLUMNS = [
+    { label: 'Employee Name', fieldName: 'Label', editable: true },
+    { label: 'Attendance', fieldName:'Name__c',  type: 'boolean' , value:true ,editable: true},
+   
+];
+const UPDATEDCOLUMNS = [
+    { label: 'Employee Name', fieldName: 'Employee_Name__c', editable: true },
+    { label: 'Attendance', fieldName:'Employee_Status__c',  type: 'boolean' , value:true ,editable: true},
+   
+];
+
+export default class MetadataLWC extends LightningElement {
+
+    records;
+    updatedrecords;
+    wiredRecords;
+    error;
+    columns = COLUMNS;
+    updatedColumns=UPDATEDCOLUMNS;
+    draftValues = [];
+    today;
+    selectedtoday=false;
+    selecteddate;
+    showupdatedTable=false;
+    connectedCallback(){
+        this.today = new Date().toISOString().slice(0,10);
+        console.log('checj1');
+    }
+
+      datchange(event){
+     
+        console.log('date'+event.target.value);
+        this.selecteddate=event.target.value;
+
+
+         getSavedDetails({ selectedDt: this.selecteddate})
+        .then(result => {
+            //this.showupdatedTable=true;
+            this.updatedrecords=result;
+            console.log('this.updatedrecords'+JSON.stringify(this.updatedrecords));
+            console.log('this.today'+this.today);
+            console.log('this.selecteddate'+this.selecteddate);
+
+
+            
+            if(this.today==this.selecteddate){
+                if (this.updatedrecords==null || this.updatedrecords==undefined || this.updatedrecords=='' ){
+                    this.showupdatedTable=false;
+                    this.selectedtoday=true;
+                    console.log('nottoday');
+                }
+    
+                else {
+                    this.selectedtoday=false;
+                    this.showupdatedTable=true;
+        
+                }
+            }
+            else if (this.today>this.selecteddate){
+               
+                    if (this.updatedrecords==null || this.updatedrecords==undefined || this.updatedrecords=='' ){
+                        this.showupdatedTable=false;
+                        this.selectedtoday=true;
+                        console.log('nottoday');
+                    }
+    
+                    else {
+                        this.selectedtoday=false;
+                        this.showupdatedTable=true;
+            
+                    }
+    
+    
+            }
+            else {
+                console.log('inside third else');
+                this.showupdatedTable=false;
+                this.selectedtoday=false;
+    
+    
+            }
+
+
+        })
+        .catch(error => {
+            this.error = error;
+            console.log('error '+this.error);   
+        });
+
+        
+
+       
+
+        console.log('selectedtoday'+this.selectedtoday);
+        console.log('showupdatedTable'+this.showupdatedTable);
+
+    }
+
+
+    @wire( getDetails )  
+    wiredRecs( value ) {
+
+        this.wiredRecords = value;
+        const { data, error } = value;
+
+        if ( data ) {
+                        
+            this.records = data;
+            this.error = undefined;
+
+        } else if ( error ) {
+
+            this.error = error;
+            this.records = undefined;
+
+        }
+
+    }  
+
+
+    handleSave(event){
+
+        console.log('after save hit');
+        console.log('values '+ this.draftValues);
+        console.log('values1'+(event.detail.draftValues));
+        updateDetails({ empMap: event.detail.draftValues ,selecteddate:this.selecteddate})
+        .then(result => {
+           
+            this.showToast();
+            getSavedDetails({ selectedDt: this.selecteddate})
+        .then(result => {
+            this.updatedrecords=result;
+            console.log('result'+JSON.stringify(result));
+            this.showupdatedTable=true;
+            console.log('this.'+this.showupdatedTable);
+            refreshApex(result);
+
+
+
+        })
+        .cathc(error=>{})
+        })
+        .catch(error => {
+            this.error = error;
+            console.log('error '+this.error);
+        });
+        //this.showToast();
+
+    }
+
+    showToast() {
+        const event = new ShowToastEvent({
+            title: 'Record has been saved.',
+            message: 'Record has been saved',
+            variant: 'success',
+            mode: 'dismissable'
+        });
+        this.dispatchEvent(event);
+    }
+
+}
